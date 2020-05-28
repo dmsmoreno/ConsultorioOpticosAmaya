@@ -1,3 +1,4 @@
+
 CREATE DATABASE punto_de_venta_v_dos_uno;
 /**
 	Se modifica la tabla ventas, agregando los campos
@@ -5,11 +6,12 @@ CREATE DATABASE punto_de_venta_v_dos_uno;
     descuento.
 */
 
+
 USE punto_de_venta_v_dos_uno;
 
 CREATE TABLE clientes
 (
-id VARCHAR(15) PRIMARY KEY,
+id integer  PRIMARY KEY auto_increment,
 nombre VARCHAR(50) NOT NULL,
 direccion VARCHAR(50),
 telefono VARCHAR(10)
@@ -74,7 +76,7 @@ FOREIGN KEY (id_venta) REFERENCES ventas(id)
 CREATE TABLE ventas_cliente
 (
 	id_venta INTEGER(11) NOT NULL,
-    id_cliente VARCHAR(15) NOT NULL,
+    id_cliente INTEGER NOT NULL,
     FOREIGN KEY(id_venta) 	REFERENCES ventas(id),
     FOREIGN KEY(id_cliente) REFERENCES clientes(id)
 )engine = InnoDB;
@@ -310,6 +312,12 @@ DELIMITER ;
 
 /*************************************************************/
 /*Crea la vista para mostrar las ventas asociadas al cliente*/
+
+
+/**********************************************
+*************************************
+************************************
+FUNCIONANDO SIN SUMAR PRODUCTOS EN VENTAS...
 create view vista_buscar_ventas as
 select  
 	ventas.id,
@@ -340,6 +348,41 @@ where
 
 /************************************************************/
 
+
+
+
+
+/**************************************
+****************************************/
+create view vista_buscar_ventas as
+select  
+	ventas.id,
+    clientes.id as id_cliente,
+	clientes.nombre as nombre_cliente,
+	detalle_ventas.cantidad as cantidad,
+	productos.nombre as nombre_producto,	
+	productos.precio  as precio_producto,
+	detalle_ventas.descuento as descuento, 
+	if
+		(
+			detalle_ventas.descuento = 0,productos.precio * detalle_ventas.cantidad ,productos.precio * detalle_ventas.cantidad - (detalle_ventas.precio * detalle_ventas.descuento/100)
+		) as precio_descuento,
+	productos.precio * detalle_ventas.cantidad as precio_sin_descuento,	
+	ventas.estado,
+	abonos.valor_abono 
+from 
+	ventas, detalle_ventas, productos, abonos, ventas_cliente, clientes
+where 
+	ventas.id =  detalle_ventas.id_venta
+	and productos.id = detalle_ventas.id_producto
+	and ventas_cliente.id_cliente = clientes.id
+	and ventas_cliente.id_venta  = ventas.id
+	and abonos.id_venta = ventas.id 
+	group by productos.id, clientes.id,ventas.id,detalle_ventas.descuento order by id desc;
+
+
+
+/**********************************************************/
 create view vista_saldo_ventas as
 select
 	abonos.id_venta ,
@@ -356,6 +399,26 @@ where
 	and ventas_cliente.id_cliente = clientes.id
 	and ventas.id = abonos.id_venta
 	and ventas.id = ventas.id  group by ventas.id;  
+    /**********************************************************************/
+   
+   
+create view vista_saldo_sin_cliente as   
+select
+	abonos.id_venta ,
+    ventas.valor_total,
+    sum(abonos.valor_abono) as abono,
+    if(sum(abonos.valor_abono) = 0,ventas.valor_total ,ventas.valor_total - sum(abonos.valor_abono)) as saldo,
+    ventas.estado
+from ventas,abonos
+where 
+	ventas.id = abonos.id_venta
+	and ventas.id = ventas.id 
+    group by ventas.id;      
+    
+    
+    
+    
+    
 	
 /*Versión 1 funciona, pero cuando el abono es cero, retorna saldo cero,
 lo cual es incorrecto
@@ -473,6 +536,14 @@ where
 *************************************************************
 *************************************************************
 *************************************************************/
+
+
+
+
+
+/******************************************
+*******************************************
+FUNCIONANDO SIN SUMAR PRODUCTOS EN VENAS
 create view vista_factura_sin_cliente as 
 select  
 	ventas.id,
@@ -497,6 +568,31 @@ where
 /***********************************************************************************/
 /*************************************************************************************
 *************************************************************************************/
+create view vista_factura_sin_cliente as 
+select  
+	ventas.id,
+	detalle_ventas.cantidad as cantidad,
+	productos.nombre as nombre_producto,	
+	productos.precio  as precio_producto,
+	detalle_ventas.descuento as descu, 
+	if
+	(
+	  detalle_ventas.descuento = 0,productos.precio *detalle_ventas.cantidad ,productos.precio * detalle_ventas.cantidad - (detalle_ventas.precio * detalle_ventas.descuento/100)
+	) as precio_descuento,
+	productos.precio *detalle_ventas.cantidad as precio_sin_descuento,	
+	ventas.estado,
+	abonos.valor_abono 
+from 
+	ventas, detalle_ventas, productos, abonos
+where 
+	ventas.id =  detalle_ventas.id_venta
+	and productos.id = detalle_ventas.id_producto
+	and abonos.id_venta = ventas.id 
+	group by productos.id, ventas.id,detalle_ventas.descuento order by id desc;
+
+
+
+
 
 create view vista_reporte_ventas_detalle as
 select  
