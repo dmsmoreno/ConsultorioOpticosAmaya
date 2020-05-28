@@ -1,11 +1,11 @@
-CREATE DATABASE punto_de_venta_consultorio_opticos;
+CREATE DATABASE punto_de_venta_v_dos_uno;
 /**
 	Se modifica la tabla ventas, agregando los campos
     tipo_descuento,
     descuento.
 */
 
-USE punto_de_venta_consultorio_opticos;
+USE punto_de_venta_v_dos_uno;
 
 CREATE TABLE clientes
 (
@@ -46,7 +46,7 @@ FOREIGN KEY (id_usuario) REFERENCES usuarios(id)
 CREATE TABLE categorias
 (
 id INTEGER(11) PRIMARY KEY AUTO_INCREMENT,
-nombre VARCHAR(20) UNIQUE NOT NULL
+nombre VARCHAR(50) UNIQUE NOT NULL
 )engine = InnoDB;
 
 CREATE TABLE productos
@@ -107,7 +107,7 @@ CREATE TABLE proveedores
 id INTEGER(11) PRIMARY KEY AUTO_INCREMENT,
 razon_social VARCHAR(50) NULL,
 tipo_documento VARCHAR(15) NULL,
-num_documento VARCHAR(11) UNIQUE NULL,
+num_documento VARCHAR(15) UNIQUE NULL,
 telefono VARCHAR(10) NULL
 )engine = InnoDB;
 
@@ -241,7 +241,7 @@ DELIMITER ;
 /*--------------------------------------------------------------------------------------------------------------*/
 
 /*---------------------------------------------------------------------------------------*/
-INSERT INTO usuarios(id,nombre,contrasena,rol) VALUES (1234,'CONSULTORIO OPTICOS AMAYA',MD5('1234'),'ADMINISTRADOR');
+INSERT INTO usuarios(id,nombre,contrasena,rol) VALUES (1234,'admin',MD5('1234'),'ADMINISTRADOR');
 /*---------------------------------------------------------------------------------------*/
 
 
@@ -378,6 +378,16 @@ where
 /******************************************************
 ********************************************************
 */
+
+
+
+
+
+
+/*******************************************
+********************************************
+FUNCIONANDO SIN LA OPCION DE BUSCAR TICKET**
+********************************************
 create view vista_factura as
 select  
 	ventas.id,
@@ -403,6 +413,42 @@ where
 	and ventas_cliente.id_venta  = ventas.id
 	and abonos.id_venta = ventas.id 
 	group by productos.id, clientes.id,ventas.id,detalle_ventas.descuento order by id desc;
+    *************************************************************************************
+    *****************************************************
+    ********************************
+    *****************/
+    
+    
+    
+/*******************************************
+********************************************
+FUNCIONANDO CON BUSCAR TICKET - PROBANDO**
+********************************************/
+    create view vista_factura as
+	select  
+	ventas.id,
+    clientes.id as id_cliente,
+	clientes.nombre as nombre_cliente,
+	detalle_ventas.cantidad as cantidad,
+	productos.nombre as nombre_producto,	
+	productos.precio  as precio_producto,
+	detalle_ventas.descuento as descu, 
+	if
+		(
+			detalle_ventas.descuento = 0,productos.precio *detalle_ventas.cantidad ,productos.precio * detalle_ventas.cantidad - (detalle_ventas.precio * detalle_ventas.descuento/100)
+		) as precio_descuento,
+	productos.precio * detalle_ventas.cantidad as precio_sin_descuento,	
+	ventas.estado,
+	abonos.valor_abono 
+from 
+	ventas, detalle_ventas, productos, abonos, ventas_cliente, clientes
+where 
+	ventas.id =  detalle_ventas.id_venta
+	and productos.id = detalle_ventas.id_producto
+	and ventas_cliente.id_cliente = clientes.id
+	and ventas_cliente.id_venta  = ventas.id
+	and abonos.id_venta = ventas.id 
+	group by productos.id, clientes.id,ventas.id,detalle_ventas.descuento order by id desc;    
     
 /***********************************************************/    
 create view vista_factura_abonos as
@@ -475,75 +521,36 @@ where
 	and productos.id = detalle_ventas.id_producto
 	and abonos.id_venta = ventas.id 
 	group by productos.id, ventas.id,detalle_ventas.descuento,fecha,abonos.valor_abono order by id desc;
-    
-/*select  
+
+/**************************************************************************************
+*******************************EN PRUEBA***********************************************/
+CREATE VIEW vista_detalle_ventas_categoria as
+select  
 	ventas.id,
-    clientes.id as id_cliente,
-	clientes.nombre as nombre_cliente,
-	detalle_ventas.cantidad,
-	productos.nombre as nombre_producto,
-	detalle_ventas.precio as precio_producto,
+	sum(detalle_ventas.cantidad) as cantidad,
+	productos.nombre as nombre_producto,	
+	productos.precio  as precio_producto,
 	detalle_ventas.descuento as descu, 
-	detalle_ventas.precio -(detalle_ventas.precio * detalle_ventas.descuento/100) as precio_descuento,
+	if
+		(
+			detalle_ventas.descuento = 0,productos.precio *sum(detalle_ventas.cantidad) ,productos.precio * sum(detalle_ventas.cantidad) - (detalle_ventas.precio * detalle_ventas.descuento/100)
+		) as precio_descuento,
+	productos.precio *sum(detalle_ventas.cantidad) as precio_sin_descuento,	
+	ventas.estado,
 	abonos.valor_abono,
-	ventas.estado
+	abonos.tipo_pago,
+	categorias.nombre as categorias,
+	abonos.fecha
 from 
-	ventas, detalle_ventas, productos, abonos, ventas_cliente, clientes
+	ventas, detalle_ventas, productos, abonos,categorias 
 where 
 	ventas.id =  detalle_ventas.id_venta
 	and productos.id = detalle_ventas.id_producto
-	and ventas_cliente.id_cliente = clientes.id
-	and ventas_cliente.id_venta  = ventas.id
 	and abonos.id_venta = ventas.id 
-	group by productos.id, clientes.id,ventas.id order by id desc;*/
+	and categorias.id = productos.id_categoria 
+	group by productos.id, ventas.id,detalle_ventas.descuento,fecha,abonos.valor_abono order by id desc;
     
 
 /***********************************************************************************/
 SET SQL_SAFE_UPDATES=0;
 /***********************************************************************************/
-
-
-
-/**
-Consulta reporte ventas version 1.0
-//SELECT  SUM(detalle_ventas.cantidad)AS cantidad,
-//				productos.nombre,
-//				productos.precio * SUM(detalle_ventas.cantidad)AS precio,
-//				date_format(ventas.fecha,'%d/%m/%Y') AS fecha,
-//				productos.precio AS valor_unitario
-//FROM    productos,ventas,detalle_ventas
-//WHERE   ventas.id = detalle_ventas.id_venta
-//		AND productos.id = detalle_ventas.id_producto
-//       AND ventas.fecha >= $P{fecha_inicio}   
-//      AND ventas.fecha <=  $P{fecha_fin}  
-//GROUP BY detalle_ventas.id_producto,fecha
-
-
-
-use punto_de_venta_consultorio_opticos;
-
-select * from ventas;
-
-select  
-	ventas.id,
-	clientes.nombre,
-	detalle_ventas.cantidad,
-	productos.nombre,
-	detalle_ventas.precio, 
-	ventas.valor_total,  
-	detalle_ventas.descuento, 
-	ventas.estado
-from 
-	ventas, detalle_ventas, productos, abonos, ventas_cliente, clientes
-where 
-	ventas.id =  detalle_ventas.id_venta
-	and productos.id = detalle_ventas.id_producto
-	and ventas_cliente.id_cliente = clientes.id
-	and ventas_cliente.id_venta = ventas.id
-	and abonos.id_venta = ventas.id 
-	and clientes.id = '1056612890'order by ventas.id desc;
-
-select * from abonos;
-	
-
-**/
